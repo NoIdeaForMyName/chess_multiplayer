@@ -39,6 +39,9 @@ class Piece(abc.ABC):
             possible.append((move_i+i, move_j+j))
         return list(filter(lambda m: 0 <= m[0] <= self.BOARD_SIZE and 0 <= m[1] <= self.BOARD_SIZE, possible))
 
+    def __str__(self):
+        return self.__class__.__name__ + self.color.name
+
 
 class EmptyPiece(Piece):
     def __init__(self):
