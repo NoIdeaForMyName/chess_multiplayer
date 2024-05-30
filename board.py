@@ -1,34 +1,40 @@
 from pieces import *
 from enum import Enum, auto
 
+
 class MoveType(Enum):
     InvalidMove = auto()
     Move = auto()
     Take = auto()
+
 
 class CheckState(Enum):
     NoCheck = auto()
     Check = auto()
     Checkmate = auto()
 
-class Game:
+class ChessBoard:
     SIZE = 8
 
     def __init__(self) -> None:
         self.white_king = King(Color.White)
         self.black_king = King(Color.Black)
         self._board: list[list[Piece]] = [
-            [Rook(Color.White), Knight(Color.White), Bishop(Color.White), self.white_king, Queen(Color.White), Bishop(Color.White), Knight(Color.White), Rook(Color.White)],
-            [Pawn(Color.White) for _ in range(self.SIZE)],
-            [EmptyPiece() for _ in range(self.SIZE)],
-            [EmptyPiece() for _ in range(self.SIZE)],
-            [EmptyPiece() for _ in range(self.SIZE)],
-            [EmptyPiece() for _ in range(self.SIZE)],
+            [Rook(Color.Black), Knight(Color.Black), Bishop(Color.Black), self.black_king, Queen(Color.Black), Bishop(Color.Black), Knight(Color.Black), Rook(Color.Black)],
             [Pawn(Color.Black) for _ in range(self.SIZE)],
-            [Rook(Color.Black), Knight(Color.Black), Bishop(Color.Black), self.black_king, Queen(Color.Black), Bishop(Color.Black), Knight(Color.Black), Rook(Color.Black)]
+            [EmptyPiece() for _ in range(self.SIZE)],
+            [EmptyPiece() for _ in range(self.SIZE)],
+            [EmptyPiece() for _ in range(self.SIZE)],
+            [EmptyPiece() for _ in range(self.SIZE)],
+            [Pawn(Color.White) for _ in range(self.SIZE)],
+            [Rook(Color.White), Knight(Color.White), Bishop(Color.White), self.white_king, Queen(Color.White), Bishop(Color.White), Knight(Color.White), Rook(Color.White)]
         ]
-        self.winner: str | None = None
+        self.winner: Color | None = None
         self.moves: list[str] = []
+
+    @property
+    def board(self):
+        return self._board
 
     def move(self, old_pos: tuple[int, int], new_pos: tuple[int, int]) -> tuple[MoveType, CheckState]:
         old_pos_piece = self._board[old_pos[0]][old_pos[1]]
@@ -41,7 +47,10 @@ class Game:
             else:
                 move_type = MoveType.Take
             enemy_king = self.white_king if old_pos_piece.color == Color.Black else self.black_king
-            return move_type, self.get_check_state(self.find_king(enemy_king))
+            check_state = self.get_check_state(self.find_king(enemy_king))
+            if check_state == CheckState.Checkmate:
+                self.winner = Color.White if enemy_king.color == Color.Black else Color.Black
+            return move_type, check_state
         else:
             return MoveType.InvalidMove, CheckState.NoCheck
 
@@ -49,12 +58,12 @@ class Game:
         piece = self._board[old[0]][old[1]]
         if new in piece.possible_moves(*old):
             if self._board[new[0]][new[1]].color != piece.color:
-                return not self.move_causes_selfcheck(piece, old, new)
+                return not self.move_causes_selfcheck(old, new)
             else:
                 return False
         if isinstance(piece, Pawn):
             if not piece.was_moved and new == piece.first_move(*old):
-                return not self.move_causes_selfcheck(piece, old, new)
+                return not self.move_causes_selfcheck(old, new)
             # TODO add en_passant
             else:
                 return False
