@@ -56,17 +56,38 @@ class ChessBoard:
 
     def validate_move_legality(self, old: tuple[int, int], new: tuple[int, int]) -> bool:
         piece = self._board[old[0]][old[1]]
-        if new in piece.possible_moves(*old):
-            if self._board[new[0]][new[1]].color != piece.color:
-                return not self.move_causes_selfcheck(old, new)
-            else:
-                return False
+        new_pos_piece = self._board[new[0]][new[1]]
         if isinstance(piece, Pawn):
-            if not piece.was_moved and new == piece.first_move(*old):
+            # here whole pawn logic is handled, because its moves are different tha the rest of the pieces
+            if ((new in piece.possible_takes(*old) and not isinstance(new_pos_piece, EmptyPiece) and new_pos_piece != piece.color) or
+            (new in piece.possible_moves(*old) and isinstance(new_pos_piece, EmptyPiece))):
                 return not self.move_causes_selfcheck(old, new)
             # TODO add en_passant
+            elif not piece.was_moved and new == piece.first_move(*old) and isinstance(new_pos_piece, EmptyPiece) and isinstance(self._board[old[0]+(1 if piece.color == Color.Black else -1)][old[1]], EmptyPiece):  # TODO +1 albo -1 dla self._board[old[0]+1][old[1]]
+                piece.was_moved = True
+                return not self.move_causes_selfcheck(old, new)
             else:
                 return False
+        elif new in piece.possible_moves(*old):
+            if isinstance(piece, Knight) or self.free_path_between(old, new):
+                if new_pos_piece.color != piece.color:
+                    return not self.move_causes_selfcheck(old, new)
+            return False
+
+    def free_path_between(self, old: tuple[int, int], new: tuple[int, int]):
+        path_i, path_j = new[0]-old[0], new[1]-old[1]
+        shift_i = path_i//abs(path_i) if path_i != 0 else 0
+        shift_j = path_j//abs(path_j) if path_j != 0 else 0
+        ptc = old  # ptc - position to check
+        for _ in range(max(abs(path_i), abs(path_j))-1):
+            ptc = (ptc[0]+shift_i, ptc[1]+shift_j)
+            try:
+                if not isinstance(self._board[ptc[0]][ptc[1]], EmptyPiece):  # piece on the way of the move!
+                    return False
+            except:
+                print('Loolz', ptc)
+                print('old', old, 'new', new)
+        return True
 
     def move_causes_selfcheck(self, old: tuple[int, int], new: tuple[int, int]) -> bool:
         piece = self._board[old[0]][old[1]]
@@ -86,10 +107,12 @@ class ChessBoard:
         king = self._board[king_pos[0]][king_pos[1]]
         for i, line in enumerate(self._board):
             for j, piece in enumerate(line):
-                if piece.color != king.color and king_pos in piece.possible_moves(i, j):
-                    if self.is_checkmate(king_pos):
-                        return CheckState.Checkmate
-                    return CheckState.Check
+                if piece.color != king.color:
+                    if ((isinstance(piece, Knight) and king_pos in piece.possible_moves(i, j)) or
+                    king_pos in filter(lambda new: self.free_path_between((i, j), new), piece.possible_moves(i, j))):
+                        if self.is_checkmate(king_pos):
+                            return CheckState.Checkmate
+                        return CheckState.Check
         return CheckState.NoCheck
 
     def is_checkmate(self, king_pos: tuple[int, int]) -> bool:
