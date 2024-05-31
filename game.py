@@ -1,3 +1,5 @@
+import os.path
+
 import pygame
 import sys
 from enum import Enum, auto
@@ -44,11 +46,13 @@ class Game:
     def __init__(self, white_player: str, black_player: str, time: float) -> None:
 
         self.piece_images = {
-            name: pygame.transform.scale(pygame.image.load(f'resources\\{name}.png'), (self.CELL_SIZE, self.CELL_SIZE)) for
-            name in self.piece_names}
+            name: pygame.transform.scale(pygame.image.load(f'resources\\images\\{name}.png'), (self.CELL_SIZE, self.CELL_SIZE)) for
+            name in self.piece_names
+        }
 
         pygame.init()
         pygame.font.init()
+        pygame.mixer.init()
         self.screen = pygame.display.set_mode((self.SCREEN_WIDTH, self.SCREEN_HEIGHT))
         pygame.display.set_caption("Chess Game")
         self.clock = pygame.time.Clock()
@@ -64,6 +68,14 @@ class Game:
             Color.Black: ChessClock(time)
         }
         self.active_clock = self.clocks[Color.White]
+
+        sounds_path = 'resources\\sounds'
+        self.move_sound = pygame.mixer.Sound(os.path.join(sounds_path, 'move.mp3'))
+        self.take_sound = pygame.mixer.Sound(os.path.join(sounds_path, 'take.mp3'))
+        self.wrong_move = pygame.mixer.Sound(os.path.join(sounds_path, 'wrong_move.mp3'))
+        self.check_sound = pygame.mixer.Sound(os.path.join(sounds_path, 'check.mp3'))
+        self.castle_sound = pygame.mixer.Sound(os.path.join(sounds_path, 'castle.mp3'))
+        self.game_end_sound = pygame.mixer.Sound(os.path.join(sounds_path, 'game_end.mp3'))
 
     @property
     def game_state(self):
@@ -130,19 +142,23 @@ class Game:
                         move_type, check_state = chess_game.move(dragging_piece_pos, (row, col))
 
                         if move_type == MoveType.InvalidMove:
-                            ...  # invalid move sound
+                            self.wrong_move.play()  # invalid move sound TODO
                         else:
                             self.active_clock = self.switch_clocks()
-                            if move_type == MoveType.Move:
-                                ...  # regular move sound
+                            if move_type == MoveType.Move and check_state == CheckState.NoCheck:
+                                self.move_sound.play()  # regular move sound
                             elif move_type == MoveType.Take:
-                                ...  # take sound
+                                self.take_sound.play()  # take sound
+                            elif move_type == MoveType.Castle:
+                                self.castle_sound.play()  # castle sound
                         match check_state:
                             case CheckState.NoCheck:
                                 checked_king_pos = None
                             case CheckState.Check:
+                                self.check_sound.play()
                                 checked_king_pos = chess_game.find_king(chess_game.white_king if board[row][col].color == Color.Black else chess_game.black_king)
                             case CheckState.Checkmate:
+                                self.game_end_sound.play()
                                 game_lasts = False  # end game
                         dragging_piece = None
                         dragging_piece_rect = None
@@ -159,6 +175,7 @@ class Game:
                 self.screen.blit(self.piece_images[str(dragging_piece)], dragging_piece_rect)
 
             if self.update_elapsed_time():
+                self.game_end_sound.play()
                 game_lasts = False
                 self._game_state = GameState.Ended
                 self._winner = self.players[Color.White if self.clocks[Color.Black] == self.active_clock else Color.Black]
