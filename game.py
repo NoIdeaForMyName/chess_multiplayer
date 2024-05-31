@@ -142,7 +142,7 @@ class Game:
                         move_type, check_state = chess_game.move(dragging_piece_pos, (row, col))
 
                         if move_type == MoveType.InvalidMove:
-                            self.wrong_move.play()  # invalid move sound TODO
+                            self.wrong_move.play()  # invalid move sound
                         else:
                             self.active_clock = self.switch_clocks()
                             if move_type == MoveType.Move and check_state == CheckState.NoCheck:

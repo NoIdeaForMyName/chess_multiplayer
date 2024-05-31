@@ -56,7 +56,7 @@ class ChessBoard:
         else:
             return MoveType.InvalidMove, CheckState.NoCheck
 
-    def perform_move(self, old, new) -> MoveType:  # TODO uzyj tego gdzies jeszcze
+    def perform_move(self, old, new) -> MoveType:
         """
         Special moves (something else happens, apart from making move, flag change etc.):
         king - castling
@@ -155,7 +155,7 @@ class ChessBoard:
                         return CheckState.Check
         return CheckState.NoCheck
 
-    def is_checkmate(self, king: King) -> bool: # TODO dla wszystkich figur (nie tylko dla króla) validate_move_legality # king_pos: tuple[int, int]
+    def is_checkmate(self, king: King) -> bool:
         #king = self._board[king_pos[0]][king_pos[1]]
         #possible_moves = king.possible_moves(king_pos[0], king_pos[1])
         for i, line in enumerate(self._board):
