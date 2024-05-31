@@ -163,6 +163,20 @@ class King(Piece):
         super().__init__(color, points, moves)
         self._can_castle = True
 
+    def castling_moves(self) -> dict[tuple[int, int], list[tuple[int, int]]]:
+        match self.color:
+            case Color.White:
+                return {
+                    (7, 1): [(7, 0), (7, 2)],
+                    (7, 5): [(7, 7), (7, 4)]
+
+                }
+            case Color.Black:
+                return {
+                    (0, 1): [(0, 0), (0, 2)],
+                    (0, 5): [(0, 7), (0, 4)]
+                }
+
     @property
     def can_castle(self):
         return self._can_castle
