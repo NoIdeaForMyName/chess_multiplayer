@@ -37,7 +37,10 @@ class Piece(abc.ABC):
         possible = []
         for move_i, move_j in self.moves:
             possible.append((move_i+i, move_j+j))
-        return list(filter(lambda m: 0 <= m[0] <= self.BOARD_SIZE and 0 <= m[1] <= self.BOARD_SIZE, possible))
+        return self.filter_outside_board(possible)
+
+    def filter_outside_board(self, moves: list[tuple[int, int]]) -> list[tuple[int, int]]:
+        return list(filter(lambda m: 0 <= m[0] < self.BOARD_SIZE and 0 <= m[1] < self.BOARD_SIZE, moves))
 
     def __str__(self):
         return self.__class__.__name__ + self.color.name
@@ -51,15 +54,19 @@ class EmptyPiece(Piece):
 class Pawn(Piece):
     def __init__(self, color: Color) -> None:
         points = 1
-        moves = [(1, 0)]
+        moves = [(-1, 0)]
         if color == Color.Black:
-            moves = [(-1, 0)]
+            moves = [(1, 0)]
         super().__init__(color, points, moves)
         self._was_moved: bool = False
 
     def first_move(self, i, j) -> tuple[int, int]:
         move_i = self.moves[0][0] * 2
         return move_i+i, j
+
+    def possible_takes(self, i, j) -> list[tuple[int, int]]:
+        move_i, move_j = self.possible_moves(i, j)[0]
+        return self.filter_outside_board([(move_i, move_j+1), (move_i, move_j-1)])
 
     def en_passant(self, i, j) -> list[tuple[int, int]]:
         pass  # TODO
