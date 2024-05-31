@@ -31,15 +31,20 @@ class ChessBoard:
         ]
         self.winner: Color | None = None
         self.moves: list[str] = []
+        self._turn: Color = Color.White
 
     @property
     def board(self):
         return self._board
 
+    @property
+    def turn(self):
+        return self._turn
+
     def move(self, old_pos: tuple[int, int], new_pos: tuple[int, int]) -> tuple[MoveType, CheckState]:
         old_pos_piece = self._board[old_pos[0]][old_pos[1]]
         new_pos_piece = self._board[new_pos[0]][new_pos[1]]
-        if self.validate_move_legality(old_pos, new_pos):
+        if old_pos_piece.color == self._turn and self.validate_move_legality(old_pos, new_pos):
             self.perform_move(old_pos, new_pos)
             if isinstance(new_pos_piece, EmptyPiece):
                 move_type = MoveType.Move
@@ -49,6 +54,7 @@ class ChessBoard:
             check_state = self.get_check_state(enemy_king)  # self.find_king(enemy_king)
             if check_state == CheckState.Checkmate:
                 self.winner = Color.White if enemy_king.color == Color.Black else Color.Black
+            self._turn = Color.Black if self._turn == Color.White else Color.White  # another person's turn
             return move_type, check_state
         else:
             return MoveType.InvalidMove, CheckState.NoCheck
