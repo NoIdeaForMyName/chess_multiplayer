@@ -75,7 +75,7 @@ def main():
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:  # Left mouse button
                     row, col = get_cell_under_mouse()
-                    if board[row][col]:
+                    if not isinstance(board[row][col], EmptyPiece):
                         dragging_piece = board[row][col]
                         dragging_piece_pos = (row, col)
                         dragging_piece_rect = piece_images[str(dragging_piece)].get_rect(center=pygame.mouse.get_pos())
