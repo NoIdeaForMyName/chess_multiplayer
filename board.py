@@ -6,6 +6,7 @@ class MoveType(Enum):
     InvalidMove = auto()
     Move = auto()
     Take = auto()
+    Castle = auto()
 
 
 class CheckState(Enum):
@@ -45,11 +46,7 @@ class ChessBoard:
         old_pos_piece = self._board[old_pos[0]][old_pos[1]]
         new_pos_piece = self._board[new_pos[0]][new_pos[1]]
         if old_pos_piece.color == self._turn and self.validate_move_legality(old_pos, new_pos):
-            self.perform_move(old_pos, new_pos)
-            if isinstance(new_pos_piece, EmptyPiece):
-                move_type = MoveType.Move
-            else:
-                move_type = MoveType.Take
+            move_type = self.perform_move(old_pos, new_pos)
             enemy_king = self.white_king if old_pos_piece.color == Color.Black else self.black_king
             check_state = self.get_check_state(enemy_king)  # self.find_king(enemy_king)
             if check_state == CheckState.Checkmate:
@@ -59,7 +56,7 @@ class ChessBoard:
         else:
             return MoveType.InvalidMove, CheckState.NoCheck
 
-    def perform_move(self, old, new) -> None:  # TODO uzyj tego gdzies jeszcze
+    def perform_move(self, old, new) -> MoveType:  # TODO uzyj tego gdzies jeszcze
         """
         Special moves (something else happens, apart from making move, flag change etc.):
         king - castling
@@ -79,9 +76,13 @@ class ChessBoard:
             self._board[rook_new_pos[0]][rook_new_pos[1]] = rook
             old_pos_piece.can_castle = False
             rook.can_castle = False
+            move_type = MoveType.Castle
 
+        move_type = MoveType.Move if isinstance(self._board[new[0]][new[1]], EmptyPiece) else MoveType.Take
         self._board[new[0]][new[1]] = old_pos_piece
         self._board[old[0]][old[1]] = EmptyPiece()
+
+        return move_type
 
     def validate_move_legality(self, old: tuple[int, int], new: tuple[int, int]) -> bool:
         piece = self._board[old[0]][old[1]]
