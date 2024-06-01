@@ -43,7 +43,11 @@ class Game:
         'RookWhite'
     ]
 
-    def __init__(self, white_player: str, black_player: str, time: float) -> None:
+    def __init__(self, player_color: Color, white_player: str, black_player: str, time: float) -> None:
+
+        self._player_color = player_color
+        self._another_player_move: tuple[tuple[int, int]] | None = None
+        self._all_move_list: list[tuple[tuple[int, int]]] = []
 
         self.piece_images = {
             name: pygame.transform.scale(pygame.image.load(f'resources\\images\\{name}.png'), (self.CELL_SIZE, self.CELL_SIZE)) for
@@ -76,6 +80,18 @@ class Game:
         self.check_sound = pygame.mixer.Sound(os.path.join(sounds_path, 'check.mp3'))
         self.castle_sound = pygame.mixer.Sound(os.path.join(sounds_path, 'castle.mp3'))
         self.game_end_sound = pygame.mixer.Sound(os.path.join(sounds_path, 'game_end.mp3'))
+
+    @property
+    def another_player_move(self):
+        return self._another_player_move
+
+    @another_player_move.setter
+    def another_player_move(self, value):
+        self._another_player_move = value
+
+    @property
+    def all_move_list(self):
+        return self._all_move_list
 
     @property
     def game_state(self):
@@ -123,11 +139,12 @@ class Game:
         self._game_state = GameState.InProgress
 
         while game_lasts:
+            #print('game_loop')
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
-                elif event.type == pygame.MOUSEBUTTONDOWN:
+                elif event.type == pygame.MOUSEBUTTONDOWN and self._player_color == chess_game.turn:
                     if event.button == 1:  # Left mouse button
                         row, col = self.get_cell_under_mouse()
                         if not isinstance(board[row][col], EmptyPiece) and board[row][col].color == chess_game.turn:
@@ -135,35 +152,42 @@ class Game:
                             dragging_piece_pos = (row, col)
                             dragging_piece_rect = self.piece_images[str(dragging_piece)].get_rect(center=pygame.mouse.get_pos())
                             # board[row][col] = None
-                elif event.type == pygame.MOUSEBUTTONUP:
-                    if event.button == 1 and dragging_piece:
+                elif (event.type == pygame.MOUSEBUTTONUP and self._player_color == chess_game.turn and event.button == 1 and dragging_piece or
+                self._player_color != chess_game.turn and self.another_player_move is not None):
+                    if self._player_color == chess_game.turn:
+                        old_row, old_col = dragging_piece_pos
                         row, col = self.get_cell_under_mouse()
-                        # board[row][col] = dragging_piece
-                        move_type, check_state = chess_game.move(dragging_piece_pos, (row, col))
+                    else:
+                        old_row, old_col = self.another_player_move[0]
+                        row, col = self.another_player_move[1]
 
-                        if move_type == MoveType.InvalidMove:
-                            self.wrong_move.play()  # invalid move sound
-                        else:
-                            self.active_clock = self.switch_clocks()
-                            if move_type == MoveType.Move and check_state == CheckState.NoCheck:
-                                self.move_sound.play()  # regular move sound
-                            elif move_type == MoveType.Take:
-                                self.take_sound.play()  # take sound
-                            elif move_type == MoveType.Castle:
-                                self.castle_sound.play()  # castle sound
-                        match check_state:
-                            case CheckState.NoCheck:
-                                checked_king_pos = None
-                            case CheckState.Check:
-                                self.check_sound.play()
-                                checked_king_pos = chess_game.find_king(chess_game.white_king if board[row][col].color == Color.Black else chess_game.black_king)
-                            case CheckState.Checkmate:
-                                self.game_end_sound.play()
-                                game_lasts = False  # end game
-                        dragging_piece = None
-                        dragging_piece_rect = None
-                        dragging_piece_pos = None
-                        # print('CHECK STATE', check_state)
+                    move_type, check_state = chess_game.move((old_row, old_col), (row, col))
+                    self._all_move_list.append(((old_row, old_col), (row, col)))
+
+                    if move_type == MoveType.InvalidMove:
+                        self.wrong_move.play()  # invalid move sound
+                    else:
+                        self.active_clock = self.switch_clocks()
+                        if move_type == MoveType.Move and check_state == CheckState.NoCheck:
+                            self.move_sound.play()  # regular move sound
+                        elif move_type == MoveType.Take:
+                            self.take_sound.play()  # take sound
+                        elif move_type == MoveType.Castle:
+                            self.castle_sound.play()  # castle sound
+                    match check_state:
+                        case CheckState.NoCheck:
+                            checked_king_pos = None
+                        case CheckState.Check:
+                            self.check_sound.play()
+                            checked_king_pos = chess_game.find_king(chess_game.white_king if board[row][col].color == Color.Black else chess_game.black_king)
+                        case CheckState.Checkmate:
+                            self.game_end_sound.play()
+                            game_lasts = False  # end game
+
+                    dragging_piece = None
+                    dragging_piece_rect = None
+                    dragging_piece_pos = None
+                    # print('CHECK STATE', check_state)
                 elif event.type == pygame.MOUSEMOTION:
                     if dragging_piece:
                         dragging_piece_rect.center = pygame.mouse.get_pos()
@@ -226,7 +250,7 @@ class Game:
 
 
 def main():
-    game = Game('Mic', 'Mac', 600)
+    game = Game(Color.White, 'Mic', 'Mac', 600)
     game.start()
     print(game.winner)
 
