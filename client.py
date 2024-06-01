@@ -36,12 +36,17 @@ class GameClient:
                 print('Waiting for opponent to move...')
                 move = receive_data(self._socket.recv(1024))['move']
                 print('Opponent moved:', move)
+                moves_length = len(chess_game.all_move_list)
                 chess_game.another_player_move = move
+                # TODO somethin like java's wait (notify would be appending move to list in game's all_move_list)
+                self.wait_until_move_performed(moves_length, chess_game.all_move_list)
                 last_move = move
                 my_turn = not my_turn
             elif chess_game.all_move_list != [] and chess_game.all_move_list[len(chess_game.all_move_list)-1] != last_move:
                 # new move made
                 print('Self move detected. Sending to server...')
+                print('ALL MOVE LIST:', chess_game.all_move_list)
+                print('LAST MOVE:', last_move)
                 last_move = chess_game.all_move_list[len(chess_game.all_move_list)-1]
                 data = {'move': last_move}
                 self._socket.sendall(send_data(data))
@@ -49,6 +54,10 @@ class GameClient:
                 my_turn = not my_turn
             game_lasts = chess_game.game_state == GameState.InProgress
         print('Game ended!\nPlayer:', chess_game.winner, 'won!')
+
+    def wait_until_move_performed(self, length, list):  # TODO i know it looks bad...
+        while length == len(list):
+            pass
 
     def start_game(self):
         print('START GAME METHOD; THREAD:', threading.current_thread().name)

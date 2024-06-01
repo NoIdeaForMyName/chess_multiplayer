@@ -160,13 +160,16 @@ class Game:
                     else:
                         old_row, old_col = self.another_player_move[0]
                         row, col = self.another_player_move[1]
+                        self.another_player_move = None
 
                     move_type, check_state = chess_game.move((old_row, old_col), (row, col))
-                    self._all_move_list.append(((old_row, old_col), (row, col)))
 
                     if move_type == MoveType.InvalidMove:
                         self.wrong_move.play()  # invalid move sound
                     else:
+                        print("DODAWANIE DO ALL MOVE LIST:", ((old_row, old_col), (row, col)))
+                        self._all_move_list.append(((old_row, old_col), (row, col)))
+
                         self.active_clock = self.switch_clocks()
                         if move_type == MoveType.Move and check_state == CheckState.NoCheck:
                             self.move_sound.play()  # regular move sound
