@@ -8,7 +8,9 @@ from serialize import *
 
 class SingleGameHandler:
 
-    def __init__(self, socket_: tuple[str, int], first_connection_ip: str, first_player_color: Color, game_time: float):
+    def __init__(self, game_name: str, socket_: tuple[str, int], first_connection_ip: str, first_player_color: Color, game_time: float):
+        self._game_name = game_name
+        self._socket = socket_
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_socket.bind(socket_)
         self._server_socket.listen()
@@ -26,6 +28,17 @@ class SingleGameHandler:
         self._player_nicknames: list[str] = ['', ''] # always two elements
 
         self.lock = Lock()
+
+    @property
+    def game_name(self):
+        return self._game_name
+
+    @property
+    def socket(self):
+        return self._socket
+
+    def __str__(self):
+        return self.game_name
 
     def send_game_initial_params(self) -> None:
         self.wait_for_players()
@@ -107,7 +120,7 @@ class SingleGameHandler:
 
 
 def main():
-    server = SingleGameHandler(('127.0.0.1', 12345), '127.0.0.1', Color.Black, 300)
+    server = SingleGameHandler('test_game', ('127.0.0.1', 12345), '127.0.0.1', Color.Black, 300)
     winner = server.start()
     print('Player', winner, 'won!')
 
