@@ -43,6 +43,8 @@ class ChessBoard:
         return self._turn
 
     def move(self, old_pos: tuple[int, int], new_pos: tuple[int, int]) -> tuple[MoveType, CheckState]:
+        if not is_inside_board(new_pos):
+            return MoveType.InvalidMove, CheckState.NoCheck
         old_pos_piece = self._board[old_pos[0]][old_pos[1]]
         new_pos_piece = self._board[new_pos[0]][new_pos[1]]
         if old_pos_piece.color == self._turn and self.validate_move_legality(old_pos, new_pos):
