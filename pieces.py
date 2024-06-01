@@ -17,8 +17,18 @@ class Color(Enum):
     Empty = auto()
 
 
+BOARD_SIZE = 8
+
+
+def is_inside_board(move):
+    return 0 <= move[0] < BOARD_SIZE and 0 <= move[1] < BOARD_SIZE
+
+
+def filter_outside_board(moves: list[tuple[int, int]]) -> list[tuple[int, int]]:
+    return list(filter(is_inside_board, moves))
+
+
 class Piece(abc.ABC):
-    BOARD_SIZE = 8
 
     def __init__(self, color: Color, points: int, moves: list[tuple[int, int]]) -> None:
         self._color: Color = color
@@ -37,10 +47,7 @@ class Piece(abc.ABC):
         possible = []
         for move_i, move_j in self.moves:
             possible.append((move_i+i, move_j+j))
-        return self.filter_outside_board(possible)
-
-    def filter_outside_board(self, moves: list[tuple[int, int]]) -> list[tuple[int, int]]:
-        return list(filter(lambda m: 0 <= m[0] < self.BOARD_SIZE and 0 <= m[1] < self.BOARD_SIZE, moves))
+        return filter_outside_board(possible)
 
     def __str__(self):
         return self.__class__.__name__ + self.color.name
@@ -66,7 +73,7 @@ class Pawn(Piece):
 
     def possible_takes(self, i, j) -> list[tuple[int, int]]:
         move_i, move_j = self.possible_moves(i, j)[0]
-        return self.filter_outside_board([(move_i, move_j+1), (move_i, move_j-1)])
+        return filter_outside_board([(move_i, move_j+1), (move_i, move_j-1)])
 
     def en_passant(self, i, j) -> list[tuple[int, int]]:
         pass  # TODO
