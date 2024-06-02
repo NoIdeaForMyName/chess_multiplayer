@@ -28,6 +28,11 @@ QPushButton:pressed {
     background-color: rgb(99, 99, 99);
     border-style: inset;
 }
+QPushButton:disabled {
+    background-color: rgb(200, 200, 200);
+    border-color: beige;
+    color: rgb(100, 100, 100);
+}
 
 QMainWindow {
 	
@@ -59,6 +64,9 @@ QLineEdit {
     </property>
    </widget>
    <widget class="QPushButton" name="join_button">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
     <property name="geometry">
      <rect>
       <x>20</x>
@@ -85,7 +93,7 @@ QLineEdit {
    </widget>
    <widget class="QPushButton" name="create_button">
     <property name="enabled">
-     <bool>true</bool>
+     <bool>false</bool>
     </property>
     <property name="geometry">
      <rect>
