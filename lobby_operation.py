@@ -4,9 +4,17 @@ from typing import Any
 
 
 class OperationType(Enum):
+    AllGames = auto()
     StartGame = auto()
-    # JoinGame = auto()  # it is not made by server - only client
+    JoinGame = auto()
     Disconnect = auto()
+
+
+@dataclass(frozen=False)
+class GameInfo:
+    name: str
+    server_socket: tuple[str, int]
+    players_connected: int
 
 
 @dataclass(frozen=True)
