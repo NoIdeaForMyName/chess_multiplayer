@@ -36,6 +36,7 @@ class LobbyWindow(QMainWindow):
         self._my_game_info = None
         self._nickname = 'NICKNAME_TODO'  # TODO add field to choose nickname
         self._my_game_client = None  # TODO na probe
+        self._available_port_number = GAME_SERVER_FIRST_PORT
 
         self._listen_server_thread = threading.Thread(target=self.listen_server_operations)
         self._listen_server_thread.start()
@@ -71,7 +72,7 @@ class LobbyWindow(QMainWindow):
 
     def create_game(self):
         print('Creating new game...')
-        game_server_port = self.game_list.item(self.game_list.count()-1).server_socket[1] + 1 if self.game_list.count() > 0 else GAME_SERVER_FIRST_PORT
+        game_server_port = self._available_port_number
         game_name = self.game_name.text()
         color = Color.White if self.white_radio.isChecked() else Color.Black
         game_time = self.game_time.time().minute() * 60
@@ -107,6 +108,7 @@ class LobbyWindow(QMainWindow):
                     for game_info in game_info_list:
                         item = GameInfoItem(game_info=game_info)
                         self.game_list.addItem(item)
+                    self._available_port_number = game_info_list[len(game_info_list)-1].server_socket[1] + 1 if len(game_info_list) > 0 else self._available_port_number
                 case OperationType.StartGame:
                     print('operation: StartGame')
                     if not operation.data and self._my_game_info:  # my game was created, now I can join
@@ -118,6 +120,7 @@ class LobbyWindow(QMainWindow):
                         print('New game available on the list; adding...')
                         item = GameInfoItem(game_info=operation.data)
                         self.game_list.addItem(item)
+                        self._available_port_number = operation.data.server_socket[1] + 1
                 case OperationType.JoinGame:
                     print('operation: JoinGame - if game is full - it is deleted from list')
                     if operation.data.players_connected == 2:
