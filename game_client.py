@@ -4,6 +4,7 @@ from time import sleep
 
 from game import *
 from serialize import *
+from server_network_constants import *
 
 
 class GameClient:
@@ -28,6 +29,8 @@ class GameClient:
         print('START CLIENT METHOD and wait 0.01 sec')
         sleep(0.01)
 
+        print('CURRENT THREAD:', threading.current_thread().name)
+
         game_lasts = True
         last_move = None
         while game_lasts:
@@ -50,7 +53,7 @@ class GameClient:
                 last_move = chess_game.all_move_list[len(chess_game.all_move_list)-1]
                 data = {'move': last_move}
                 self._socket.sendall(send_data(data))
-                print('Self move sent!')
+                print('Self move sent to:', self._server_socket)
                 my_turn = not my_turn
             game_lasts = chess_game.game_state == GameState.InProgress
         print('Game ended!\nPlayer:', chess_game.winner, 'won!')
@@ -83,7 +86,7 @@ class GameClient:
 
 
 def main():
-    game = GameClient(('127.0.0.1', 12345), 'Mic')
+    game = GameClient((SERVER_IP, GAME_SERVER_FIRST_PORT), 'Mic')
     game.start_game()
 
 
