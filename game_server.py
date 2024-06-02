@@ -5,10 +5,14 @@ import json
 from collections import deque
 from game import *
 from serialize import *
+from server_network_constants import *
+
 
 class SingleGameHandler:
 
     def __init__(self, game_name: str, socket_: tuple[str, int], first_connection_ip: str, first_player_color: Color, game_time: float):
+
+        print('SingleGameHandler created with socket:', socket_)
         self._game_name = game_name
         self._socket = socket_
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -25,7 +29,9 @@ class SingleGameHandler:
 
         self._first_player_color = first_player_color
         self._game_time = game_time
-        self._player_nicknames: list[str] = ['', ''] # always two elements
+        self._player_nicknames: list[str] = ['', '']  # always two elements
+
+        self._game_lasts = False
 
         self.lock = Lock()
 
@@ -36,6 +42,10 @@ class SingleGameHandler:
     @property
     def socket(self):
         return self._socket
+
+    @property
+    def game_lasts(self):
+        return self._game_lasts
 
     def __str__(self):
         return self.game_name
@@ -57,20 +67,26 @@ class SingleGameHandler:
 
     def start(self) -> str:
         self.send_game_initial_params()
-        return self.run_game()
+        self._game_lasts = True
+        result = self.run_game()
+        self._game_lasts = False
+        return result
 
     def run_game(self) -> str:
-        white_socket = self._player1_socket if self._player_nicknames[0] == Color.White else self._player2_socket
+        # white_socket = self._player1_socket if self._player_nicknames[0] == Color.White else self._player2_socket
+        # black_socket = self._player2_socket if white_socket == self._player1_socket else self._player1_socket
+        white_socket = self._player1_socket if self._first_player_color == Color.White else self._player2_socket
         black_socket = self._player2_socket if white_socket == self._player1_socket else self._player1_socket
 
         sending_socket: socket.socket = white_socket
         receiving_socket: socket.socket = black_socket
 
         print('starting the game...')
+        print('CURRENT THREAD:', threading.current_thread().name)
         winner = None
-        while not winner:  # TODO change condition
+        while not winner:
             print('waiting for player move...')
-            raw_data = sending_socket.recv(1024)
+            raw_data = sending_socket.recv(1024)  # TODO CHANGE TO: raw_data = sending_socket.recv(1024)
             message = receive_data(raw_data)
             print('player move received:', message)
             if message.get('move', None):
@@ -120,9 +136,12 @@ class SingleGameHandler:
 
 
 def main():
-    server = SingleGameHandler('test_game', ('127.0.0.1', 12345), '127.0.0.1', Color.Black, 300)
-    winner = server.start()
-    print('Player', winner, 'won!')
+    server = SingleGameHandler('test_game', (SERVER_IP, GAME_SERVER_FIRST_PORT), '127.0.0.1', Color.Black, 300)
+    #winner = server.start()
+    #print('Player', winner, 'won!')
+    t = threading.Thread(target=server.start)
+    t.start()
+    t.join()
 
 
 if __name__ == '__main__':
