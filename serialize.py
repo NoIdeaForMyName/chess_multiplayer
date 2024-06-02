@@ -11,7 +11,7 @@
 import pickle
 
 
-def receive_data(data) -> dict:
+def receive_data(data):
     return pickle.loads(data)
 
 
