@@ -75,7 +75,7 @@ class Game:
         }
         self.active_clock = self.clocks[Color.White]
 
-        self._top_down_ending_winner = False
+        self._forced_ending_winner = False
 
         sounds_path = 'resources\\sounds'
         self.move_sound = pygame.mixer.Sound(os.path.join(sounds_path, 'move.mp3'))
@@ -141,8 +141,7 @@ class Game:
         game_lasts = True
         self._game_state = GameState.InProgress
 
-        while game_lasts and not self._top_down_ending_winner:
-            #print('game_loop')
+        while game_lasts and not self._forced_ending_winner:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self._winner = self.players[Color.White if self._player_color != Color.White else Color.Black]
@@ -172,7 +171,6 @@ class Game:
                     if move_type == MoveType.InvalidMove:
                         self.wrong_move.play()  # invalid move sound
                     else:
-                        print("DODAWANIE DO ALL MOVE LIST:", ((old_row, old_col), (row, col)))
                         self._all_move_list.append(((old_row, old_col), (row, col)))
 
                         self.active_clock = self.switch_clocks()
@@ -195,7 +193,6 @@ class Game:
                     dragging_piece = None
                     dragging_piece_rect = None
                     dragging_piece_pos = None
-                    # print('CHECK STATE', check_state)
                 elif event.type == pygame.MOUSEMOTION:
                     if dragging_piece:
                         dragging_piece_rect.center = pygame.mouse.get_pos()
@@ -218,11 +215,10 @@ class Game:
             self.clock.tick(60)
 
         self._game_state = GameState.Ended
-        if not self._top_down_ending_winner:
+        if not self._forced_ending_winner:
             self._winner = self.players[self._chess_game.winner]
         else:
-            print('top down:', self._top_down_ending_winner)
-            self._winner = self._top_down_ending_winner
+            self._winner = self._forced_ending_winner
         self.display_ending()
 
     def display_ending(self):
@@ -231,8 +227,8 @@ class Game:
             pygame.display.flip()
             self.clock.tick(60)
 
-    def top_down_game_ending(self, winner: str):
-        self._top_down_ending_winner = winner
+    def forced_game_ending(self, winner: str):
+        self._forced_ending_winner = winner
 
     def switch_clocks(self) -> ChessClock:
         self.active_clock.refresh_time()
@@ -270,14 +266,11 @@ def main():
     import threading, time
     def foo(g):
         time.sleep(5)
-        print('SETTING WINNER')
-        g.top_down_game_ending('Mac')
+        g.forced_game_ending('Mac')
     game = Game(Color.White, 'Mic', 'Mac', 600)
     t = threading.Thread(target=foo, args=(game,))
     t.start()
     game.start()
-    #game.top_down_game_ending('Mac')
-    print(game.winner)
     t.join()
 
 

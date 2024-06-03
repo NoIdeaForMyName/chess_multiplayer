@@ -40,10 +40,10 @@ class GameClient:
                 logging.info('Waiting for opponent to move...')
                 operation = receive_data(self._socket.recv(1024))
                 if operation.get('winner', None):
-                    chess_game.top_down_game_ending(operation['winner'])
+                    chess_game.forced_game_ending(operation['winner'])
                     break
                 elif operation.get('disconnected', None):
-                    chess_game.top_down_game_ending(self._nickname)
+                    chess_game.forced_game_ending(self._nickname)
                     break
                 else:
                     move = operation['move']
