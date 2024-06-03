@@ -1,13 +1,16 @@
 import sys
-
 import socket
 import threading
+import logging
 
 from game_server import *
 from dataclasses import dataclass
 from serialize import *
 from lobby_operation import *
 from networking import *
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(threadName)s - %(levelname)s - %(message)s')
 
 
 class ServerLobby:
@@ -25,57 +28,54 @@ class ServerLobby:
         self._lock = threading.Lock()
 
     def start(self):
-        print('listening for new players...')
+        logging.info('listening for new players...')
         self.listen_for_new_players()
 
     def listen_for_new_players(self):
         while self._running:
             player_socket = Socket(*self._server_socket.accept())
-            print('new player found!')
+            logging.info('new player found!')
             self.inform_new_player(player_socket.connection)
             with self._lock:
-                # in order not to append players while the list is iterated through
-                print('adding new player to the list of players...')
+                logging.info('adding new player to the list of players...')
                 self._player_list.append(player_socket)
                 thread = threading.Thread(target=self.listen_for_player_operations, args=(player_socket,))
                 self._players_thread.append(thread)
-                print('player added and started constant checking for his operations')
+                logging.info('player added and started constant checking for his operations')
                 thread.start()
 
     def inform_new_player(self, player: socket.socket):
-        print('informing player about all available games')
+        logging.info('informing player about all available games')
         player.sendall(send_data(LobbyOperation(OperationType.AllGames, self._game_list)))
-        print('player informed')
+        logging.info('player informed')
 
-    def listen_for_player_operations(self, player: Socket):  # including players that disconnects, starting games, joining games etc.
-        print('constant checking for player operations...')
+    def listen_for_player_operations(self, player: Socket):
+        logging.info('constant checking for player operations...')
         while self._running:
             try:
                 operation = receive_data(player.connection.recv(1024))
             except (EOFError, ConnectionResetError):
                 operation = None
-                print('Disconnect message')
-            print('operation found!')
-            if not operation:  # if message is None, it is disconnect message
+                logging.info('Disconnect message')
+            logging.info('operation found!')
+            if not operation:
                 operation = LobbyOperation(OperationType.Disconnect, None)
             match operation.type:
                 case OperationType.StartGame:
-                    print('player wants to start a game')
+                    logging.info('player wants to start a game')
                     game_info = self.start_game(player, *operation.data)
-                    print('broadcasting new game to all players')
+                    logging.info('broadcasting new game to all players')
                     self.broadcast(LobbyOperation(OperationType.StartGame, game_info), player)
                 case OperationType.JoinGame:
-                    print('player joined game')
+                    logging.info('player joined game')
                     if operation.data.players_connected == 2:
-                        print('Both players are ready; removing game from list...')
-                        print('LIST:', self._game_list)
-                        print('OPERATION DATA TO REMOVE:', operation.data)
+                        logging.info('Both players are ready; removing game from list...')
                         self.remove_from_game_list(operation.data)
-                        print('informing other players about started game...')
+                        logging.info('informing other players about started game...')
                         self.broadcast(operation, player)
-                        print('other players informed')
+                        logging.info('other players informed')
                 case OperationType.Disconnect:
-                    print('player wants to disconnect')
+                    logging.info('player wants to disconnect')
                     self.disconnect_player(player)
                     break
 
@@ -86,14 +86,13 @@ class ServerLobby:
                 del self._game_list[i]
                 break
 
-
     def broadcast(self, data, sender: Socket):
-        print('broadcast started...')
+        logging.info('broadcast started...')
         with self._lock:
             for player in self._player_list:
                 if player != sender:
                     player.connection.sendall(send_data(data))
-        print('broadcast ended')
+        logging.info('broadcast ended')
 
     def disconnect_server(self):
         self._running = False
@@ -102,28 +101,24 @@ class ServerLobby:
                 player.connection.close()
 
     def start_game(self, player: Socket, server_port, game_name: str, nickname: str, color: Color, game_time: float) -> GameInfo:
-        # needed: (ip, port), nickname, serwer_ip, port (127.0.0.1, 12345), color, time
-        print('starting game for player; creating SingleGameHandler...')
+        logging.info('starting game for player; creating SingleGameHandler...')
         game_handler = SingleGameHandler(game_name, (SERVER_IP, server_port), player.info[0], color, game_time)
         game_info = GameInfo(game_name, (SERVER_IP, server_port), 1, f'{game_name};{color.name}; {game_time}')
         self._game_list.append(game_info)
         thread = threading.Thread(target=game_handler.start)
         self._games_thread.append(thread)
-        print('SingleGameHandler added; starting game handler in separate thread...')
+        logging.info('SingleGameHandler added; starting game handler in separate thread...')
         thread.start()
-        print('informing player that his game handler is running')
-        # TODO tu powinna byc jakas przerwa zeby gracz nie probowal od razu sie laczyc bo serwer
-        # moze jeszcze nie dzialac (no chyba ze moze tak byc ze bedzie sie laczyl zanim serwer sie uruchomi
-        # i jak sie uruchomi to go polaczy, wtedy to git
+        logging.info('informing player that his game handler is running')
         player.connection.sendall(send_data(LobbyOperation(OperationType.StartGame, None)))
-        print('player informed about his game handler')
+        logging.info('player informed about his game handler')
         return game_info
 
     def disconnect_player(self, player):
         with self._lock:
             self._player_list.remove(player)
         player.connection.close()
-        print('player disconnected')
+        logging.info('player disconnected')
 
 
 def main():
@@ -133,11 +128,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
-'''
-1. nasłuchiwacz utworzenia nowej gry
-2. broadcast do wszystkich klientów gdy zajdzie jakas zmiana
-3. cała lista dla nowo połączonego klienta
-4. nasłuchiwacz dołączenia do gry
-'''

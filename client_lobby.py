@@ -1,5 +1,7 @@
 import socket
 import sys
+import logging
+import threading
 
 from PyQt5.QtWidgets import *
 from PyQt5 import uic
@@ -9,6 +11,9 @@ import os
 from server_lobby import *
 from game_client import *
 from networking import *
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(threadName)s - %(levelname)s - %(message)s')
 
 
 class LobbyWindow(QMainWindow):
@@ -29,14 +34,14 @@ class LobbyWindow(QMainWindow):
         self.nickname.textChanged.connect(self.game_name_or_nickname_changed)
 
         socket_ = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        print('Connecting to a lobby server...')
+        logging.info('Connecting to a lobby server...')
         socket_.connect(server_socket)
         self._server_socket = Socket(socket_, server_socket)
         self._client_connected = True
-        print('Connected to lobby server')
+        logging.info('Connected to lobby server')
 
         self._my_game_info = None
-        self._my_game_client = None  # TODO na probe
+        self._my_game_client = None
         self._available_port_number = GAME_SERVER_FIRST_PORT
 
         self._listen_server_thread = threading.Thread(target=self.listen_server_operations)
@@ -53,38 +58,32 @@ class LobbyWindow(QMainWindow):
         self.join_game(game_info)
 
     def join_game(self, game_info: GameInfo):
-
-        print('Joining new game...')
+        logging.info('Joining new game...')
         self._client_connected = False
-        # if threading.current_thread().ident != self._listen_server_thread.ident:
-        #     self._listen_server_thread.join()
-        # not joining because program will freeze on socket.recv() part
-        print('Stopped listening to server')
+        logging.info('Stopped listening to server')
 
-        #QCoreApplication.quit()
         self.hide()
-        print('Hiding window...\nStarting the game client...')
+        logging.info('Hiding window...\nStarting the game client...')
 
-        print('Sending info to server about joining to the game')
+        logging.info('Sending info to server about joining to the game')
         self._server_socket.connection.sendall(send_data(LobbyOperation(OperationType.JoinGame, game_info)))
-        print('Info sent; Starting game client...')
+        logging.info('Info sent; Starting game client...')
         self._my_game_client = GameClient(game_info.server_socket, self.nickname.text())
         self._my_game_client.start_game()
-        print('Game has ended')
-        # sys.exit() used self.close() instead
+        logging.info('Game has ended')
         self.close()
 
     def create_game(self):
-        print('Creating new game...')
+        logging.info('Creating new game...')
         game_server_port = self._available_port_number
         game_name = self.game_name.text()
         color = Color.White if self.white_radio.isChecked() else Color.Black
         game_time = self.game_time.time().minute() * 60
         args = game_server_port, game_name, self.nickname.text(), color, game_time
-        print('New game created with args:', args)
-        print('Sending info about new game to server...')
+        logging.info(f'New game created with args: {args}')
+        logging.info('Sending info about new game to server...')
         self._server_socket.connection.sendall(send_data(LobbyOperation(OperationType.StartGame, args)))
-        print('Info about new game sent')
+        logging.info('Info about new game sent')
         display_info = f'{game_name};{color.name}; {game_time}'
         self._my_game_info = GameInfo(game_name, (SERVER_IP, game_server_port), 1, display_info)
 
@@ -102,39 +101,37 @@ class LobbyWindow(QMainWindow):
 
     def listen_server_operations(self):
         while self._client_connected:
-            print('Waiting for any server operation...')
+            logging.info('Waiting for any server operation...')
             operation = receive_data(self._server_socket.connection.recv(1024))
-            print('Server operation received:', operation)
-            if not operation:  # if message is None, it is disconnect message
+            logging.info(f'Server operation received: {operation}')
+            if not operation:
                 operation = LobbyOperation(OperationType.Disconnect, None)
             match operation.type:
                 case OperationType.AllGames:
-                    print('operation: AllGames; got list of all games available')
+                    logging.info('operation: AllGames; got list of all games available')
                     game_info_list = operation.data
                     for game_info in game_info_list:
                         item = GameInfoItem(game_info=game_info)
                         self.game_list.addItem(item)
-                    self._available_port_number = game_info_list[len(game_info_list)-1].server_socket[1] + 1 if len(game_info_list) > 0 else self._available_port_number
+                    self._available_port_number = game_info_list[-1].server_socket[1] + 1 if game_info_list else self._available_port_number
                 case OperationType.StartGame:
-                    print('operation: StartGame')
-                    if not operation.data and self._my_game_info:  # my game was created, now I can join
-                        print('My game was created on server; I can join it now...')
-                        #self.join_game(self._my_game_info)
+                    logging.info('operation: StartGame')
+                    if not operation.data and self._my_game_info:
+                        logging.info('My game was created on server; I can join it now...')
                         QMetaObject.invokeMethod(self, "join_game_in_main_thread", Qt.QueuedConnection,
                                                  Q_ARG(GameInfo, self._my_game_info))
                     else:
-                        print('New game available on the list; adding...')
+                        logging.info('New game available on the list; adding...')
                         item = GameInfoItem(game_info=operation.data)
                         self.game_list.addItem(item)
                         self._available_port_number = operation.data.server_socket[1] + 1
                 case OperationType.JoinGame:
-                    print('operation: JoinGame - if game is full - it is deleted from list')
+                    logging.info('operation: JoinGame - if game is full - it is deleted from list')
                     if operation.data.players_connected == 2:
                         self.remove_from_QListWidget(operation.data)
                 case OperationType.Disconnect:
-                    print('operation: Disconnect; disconnecting from server...')
+                    logging.info('operation: Disconnect; disconnecting from server...')
                     self._server_socket.connection.close()
-                    #QCoreApplication.quit()
                     self.close()
                     sys.exit(0)
         self._server_socket.connection.close()
@@ -147,9 +144,7 @@ class LobbyWindow(QMainWindow):
                 break
 
     def closeEvent(self, event):
-        print('Closing lobby client...')
-        #self.close()
-        #self._server_socket.connection.close()
+        logging.info('Closing lobby client...')
         sys.exit()
 
 
@@ -160,7 +155,6 @@ class GameInfoItem(QListWidgetItem):
 
 
 def main():
-
     app = QApplication(sys.argv)
     window = LobbyWindow(('127.0.0.1', 54321))
     window.show()
