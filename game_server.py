@@ -1,3 +1,5 @@
+import sys
+
 import socket
 import threading
 from threading import Lock
@@ -65,14 +67,19 @@ class SingleGameHandler:
         data['player_color'] = Color.Black if self._first_player_color == Color.White else Color.White
         self._player2_socket.sendall(send_data(data))
 
-    def start(self) -> str:
+    def start(self) -> None:
         self.send_game_initial_params()
         self._game_lasts = True
-        result = self.run_game()
+        self.set_timer(self._game_time)
+        thread = threading.Thread(target=self.run_game)
+        thread.start()
         self._game_lasts = False
-        return result
 
-    def run_game(self) -> str:
+    def set_timer(self, duration):
+        timer = threading.Timer(duration, lambda: sys.exit())
+        timer.start()
+
+    def run_game(self) -> None:
         # white_socket = self._player1_socket if self._player_nicknames[0] == Color.White else self._player2_socket
         # black_socket = self._player2_socket if white_socket == self._player1_socket else self._player1_socket
         white_socket = self._player1_socket if self._first_player_color == Color.White else self._player2_socket
@@ -86,15 +93,26 @@ class SingleGameHandler:
         winner = None
         while not winner:
             print('waiting for player move...')
-            raw_data = sending_socket.recv(1024)  # TODO CHANGE TO: raw_data = sending_socket.recv(1024)
-            message = receive_data(raw_data)
-            print('player move received:', message)
-            if message.get('move', None):
-                receiving_socket.sendall(raw_data)
-                print('performed move sent to another player')
-            elif message.get('winner', None):
-                # end of the game
-                winner = message['winner']
+            try:
+                raw_data = sending_socket.recv(1024)
+                message = receive_data(raw_data)
+            except ConnectionResetError:
+                message = {'disconnected': True}
+                raw_data = send_data(message)
+
+            try:
+                print('player move received:', message)
+                if message.get('move', None):
+                    receiving_socket.sendall(raw_data)
+                    print('performed move sent to another player')
+                elif message.get('winner', None):
+                    # end of the game
+                    winner = message['winner']
+                    receiving_socket.sendall(send_data(message))
+            except ConnectionResetError:
+                message = {'disconnected': True}
+                sending_socket.sendall(send_data(message))
+                break
 
             print('next player turn...')
             temp = sending_socket
@@ -102,7 +120,7 @@ class SingleGameHandler:
             receiving_socket = temp
 
         print('game ended, winner:', winner)
-        return winner
+        # return winner
 
     def wait_for_players(self) -> None:
         # returns nicknames of both players
