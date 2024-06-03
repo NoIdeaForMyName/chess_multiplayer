@@ -52,7 +52,7 @@ class ServerLobby:
         while self._running:
             try:
                 operation = receive_data(player.connection.recv(1024))
-            except EOFError:
+            except (EOFError, ConnectionResetError):
                 operation = None
                 print('Disconnect message')
             print('operation found!')
@@ -105,7 +105,7 @@ class ServerLobby:
         # needed: (ip, port), nickname, serwer_ip, port (127.0.0.1, 12345), color, time
         print('starting game for player; creating SingleGameHandler...')
         game_handler = SingleGameHandler(game_name, (SERVER_IP, server_port), player.info[0], color, game_time)
-        game_info = GameInfo(game_name, (SERVER_IP, server_port), 1)
+        game_info = GameInfo(game_name, (SERVER_IP, server_port), 1, f'{game_name};{color.name}; {game_time}')
         self._game_list.append(game_info)
         thread = threading.Thread(target=game_handler.start)
         self._games_thread.append(thread)
