@@ -15,6 +15,7 @@ class GameInfo:
     name: str
     server_socket: tuple[str, int]
     players_connected: int
+    display_info: str
 
 
 @dataclass(frozen=True)
