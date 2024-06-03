@@ -14,6 +14,10 @@ class GameState(Enum):
     Ended = auto()
 
 
+def opposite_color(color: Color) -> Color:
+    return Color.White if color == Color.Black else Color.Black
+
+
 class Game:
 
     SCREEN_WIDTH = 600
