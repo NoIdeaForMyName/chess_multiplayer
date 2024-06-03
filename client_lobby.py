@@ -21,10 +21,12 @@ class LobbyWindow(QMainWindow):
 
         self.join_button.clicked.connect(self.join_button_clicked)
         self.create_button.clicked.connect(self.create_game)
-        self.game_list.model().rowsInserted.connect(self.check_game_list)
-        self.game_list.model().rowsRemoved.connect(self.check_game_list)
+        self.game_list.model().rowsInserted.connect(self.check_game_list_and_nickname)
+        self.game_list.model().rowsRemoved.connect(self.check_game_list_and_nickname)
         # self.game_list.itemClicked.connect(self.game_list_clicked)
-        self.game_name.textChanged.connect(self.game_name_changed)
+        self.game_name.textChanged.connect(self.game_name_or_nickname_changed)
+        self.nickname.textChanged.connect(self.check_game_list_and_nickname)
+        self.nickname.textChanged.connect(self.game_name_or_nickname_changed)
 
         socket_ = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         print('Connecting to a lobby server...')
@@ -34,11 +36,11 @@ class LobbyWindow(QMainWindow):
         print('Connected to lobby server')
 
         self._my_game_info = None
-        self._nickname = 'NICKNAME_TODO'  # TODO add field to choose nickname
         self._my_game_client = None  # TODO na probe
         self._available_port_number = GAME_SERVER_FIRST_PORT
 
         self._listen_server_thread = threading.Thread(target=self.listen_server_operations)
+        self._listen_server_thread.daemon = True
         self._listen_server_thread.start()
 
     def join_button_clicked(self):
@@ -60,15 +62,17 @@ class LobbyWindow(QMainWindow):
         print('Stopped listening to server')
 
         #QCoreApplication.quit()
-        self.close()
-        print('Quit application\nStarting the game client...')
+        self.hide()
+        print('Hiding window...\nStarting the game client...')
 
         print('Sending info to server about joining to the game')
         self._server_socket.connection.sendall(send_data(LobbyOperation(OperationType.JoinGame, game_info)))
         print('Info sent; Starting game client...')
-        self._my_game_client = GameClient(game_info.server_socket, self._nickname)
+        self._my_game_client = GameClient(game_info.server_socket, self.nickname.text())
         self._my_game_client.start_game()
-        sys.exit()
+        print('Game has ended')
+        # sys.exit() used self.close() instead
+        self.close()
 
     def create_game(self):
         print('Creating new game...')
@@ -76,20 +80,22 @@ class LobbyWindow(QMainWindow):
         game_name = self.game_name.text()
         color = Color.White if self.white_radio.isChecked() else Color.Black
         game_time = self.game_time.time().minute() * 60
-        args = game_server_port, game_name, self._nickname, color, game_time
+        args = game_server_port, game_name, self.nickname.text(), color, game_time
         print('New game created with args:', args)
         print('Sending info about new game to server...')
         self._server_socket.connection.sendall(send_data(LobbyOperation(OperationType.StartGame, args)))
         print('Info about new game sent')
-        self._my_game_info = GameInfo(game_name, (SERVER_IP, game_server_port), 1)
+        display_info = f'{game_name};{color.name}; {game_time}'
+        self._my_game_info = GameInfo(game_name, (SERVER_IP, game_server_port), 1, display_info)
 
-    def check_game_list(self):
-        if self.game_list.count() == 0 or not self.game_list.currentItem():
+    def check_game_list_and_nickname(self):
+        if self.game_list.count() == 0 or not self.game_list.currentItem() or self.nickname.text() == '':
             self.join_button.setEnabled(False)
-        self.join_button.setEnabled(True)
+        else:
+            self.join_button.setEnabled(True)
 
-    def game_name_changed(self):
-        if self.game_name.text() == '':
+    def game_name_or_nickname_changed(self):
+        if self.game_name.text() == '' or self.nickname.text() == '':
             self.create_button.setEnabled(False)
         else:
             self.create_button.setEnabled(True)
@@ -140,10 +146,16 @@ class LobbyWindow(QMainWindow):
                 self.game_list.removeItemWidget(item_)
                 break
 
+    def closeEvent(self, event):
+        print('Closing lobby client...')
+        #self.close()
+        #self._server_socket.connection.close()
+        sys.exit()
+
 
 class GameInfoItem(QListWidgetItem):
     def __init__(self, game_info: GameInfo, parent=None):
-        super().__init__(game_info.name, parent)
+        super().__init__(game_info.display_info, parent)
         self.game_info = game_info
 
 
