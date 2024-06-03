@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>585</width>
-    <height>415</height>
+    <width>571</width>
+    <height>470</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -47,17 +47,27 @@ QTimeEdit {
 QLineEdit {
 	border: 2px solid gray;
 	padding: 5px;
+}
+
+QListWidget:item {
+    background-color: rgb(28, 255, 39);
 }</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <widget class="QListWidget" name="game_list">
     <property name="geometry">
      <rect>
-      <x>20</x>
-      <y>20</y>
+      <x>10</x>
+      <y>70</y>
       <width>271</width>
       <height>301</height>
      </rect>
+    </property>
+    <property name="font">
+     <font>
+      <family>Comic Sans MS</family>
+      <pointsize>11</pointsize>
+     </font>
     </property>
     <property name="styleSheet">
      <string notr="true"/>
@@ -69,8 +79,8 @@ QLineEdit {
     </property>
     <property name="geometry">
      <rect>
-      <x>20</x>
-      <y>330</y>
+      <x>10</x>
+      <y>380</y>
       <width>276</width>
       <height>41</height>
      </rect>
@@ -97,8 +107,8 @@ QLineEdit {
     </property>
     <property name="geometry">
      <rect>
-      <x>300</x>
-      <y>330</y>
+      <x>290</x>
+      <y>380</y>
       <width>276</width>
       <height>41</height>
      </rect>
@@ -119,8 +129,8 @@ QLineEdit {
    <widget class="QWidget" name="verticalLayoutWidget">
     <property name="geometry">
      <rect>
-      <x>300</x>
-      <y>20</y>
+      <x>290</x>
+      <y>70</y>
       <width>271</width>
       <height>301</height>
      </rect>
@@ -165,7 +175,7 @@ QLineEdit {
          </property>
          <property name="font">
           <font>
-           <pointsize>10</pointsize>
+           <pointsize>11</pointsize>
           </font>
          </property>
          <property name="styleSheet">
@@ -291,13 +301,54 @@ QLineEdit {
      </item>
     </layout>
    </widget>
+   <widget class="QWidget" name="horizontalLayoutWidget">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>10</y>
+      <width>551</width>
+      <height>41</height>
+     </rect>
+    </property>
+    <layout class="QHBoxLayout" name="horizontalLayout_4">
+     <item alignment="Qt::AlignHCenter">
+      <widget class="QLabel" name="label_4">
+       <property name="font">
+        <font>
+         <family>Comic Sans MS</family>
+         <pointsize>16</pointsize>
+         <weight>75</weight>
+         <italic>true</italic>
+         <bold>true</bold>
+        </font>
+       </property>
+       <property name="text">
+        <string>Nickname</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="nickname">
+       <property name="font">
+        <font>
+         <family>Comic Sans MS</family>
+         <pointsize>12</pointsize>
+        </font>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>585</width>
+     <width>571</width>
      <height>21</height>
     </rect>
    </property>
