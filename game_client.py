@@ -37,7 +37,15 @@ class GameClient:
             #print('client_loop')
             if not my_turn:
                 print('Waiting for opponent to move...')
-                move = receive_data(self._socket.recv(1024))['move']
+                operation = receive_data(self._socket.recv(1024))
+                if operation.get('winner', None):
+                    chess_game.top_down_game_ending(operation['winner'])
+                    break
+                elif operation.get('disconnected', None):
+                    chess_game.top_down_game_ending(self._nickname)
+                    break
+                else:
+                    move = operation['move']
                 print('Opponent moved:', move)
                 moves_length = len(chess_game.all_move_list)
                 chess_game.another_player_move = move
@@ -56,6 +64,7 @@ class GameClient:
                 print('Self move sent to:', self._server_socket)
                 my_turn = not my_turn
             game_lasts = chess_game.game_state == GameState.InProgress
+        self._socket.sendall(send_data({'winner': chess_game.winner}))
         print('Game ended!\nPlayer:', chess_game.winner, 'won!')
 
     def wait_until_move_performed(self, length, list):  # TODO i know it looks bad...
@@ -78,11 +87,13 @@ class GameClient:
         print('Starting the game...')
         my_turn = args['player_color'] == Color.White
         client_thread = threading.Thread(target=self.start_client, args=(chess_game, my_turn,))
+        client_thread.daemon = True
 
         client_thread.start()
         chess_game.start()
 
-        client_thread.join()
+        while not chess_game.winner:
+            sleep(1)
 
 
 def main():
