@@ -103,7 +103,7 @@ class ServerLobby:
     def start_game(self, player: Socket, server_port, game_name: str, nickname: str, color: Color, game_time: float) -> GameInfo:
         logging.info('starting game for player; creating SingleGameHandler...')
         game_handler = SingleGameHandler(game_name, (SERVER_IP, server_port), player.info[0], color, game_time)
-        game_info = GameInfo(game_name, (SERVER_IP, server_port), 1, f'{game_name};{color.name}; {game_time}')
+        game_info = GameInfo(game_name, (SERVER_IP, server_port), 1, f'{game_name}; {opposite_color(color).name}; {game_time}')
         self._game_list.append(game_info)
         thread = threading.Thread(target=game_handler.start)
         self._games_thread.append(thread)
