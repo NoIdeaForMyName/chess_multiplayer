@@ -3,6 +3,7 @@
 # my ignores
 .idea/
 socket/
+archive/
 # end my ignores
 
 ### Python template
