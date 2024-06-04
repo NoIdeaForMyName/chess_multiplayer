@@ -17,6 +17,12 @@ class GameClient:
         self._server_socket = server_socket
         self._nickname: str = nickname
 
+        self._chess_game: Game | None = None
+
+    @property
+    def chess_game(self):
+        return self._chess_game
+
     def connect(self):
         logging.info('Connecting to server...')
         self._socket.connect(self._server_socket)
@@ -27,11 +33,9 @@ class GameClient:
         self._socket.sendall(self._nickname.encode())
         logging.info('Nickname sent!')
 
-    def start_client(self, chess_game: Game, my_turn: bool) -> None:
+    def start_client(self, my_turn: bool) -> None:
         logging.info('START CLIENT METHOD and wait 0.01 sec')
         sleep(0.01)
-
-        logging.info(f'CURRENT THREAD: {threading.current_thread().name}')
 
         game_lasts = True
         last_move = None
@@ -40,35 +44,36 @@ class GameClient:
                 logging.info('Waiting for opponent to move...')
                 operation = receive_data(self._socket.recv(1024))
                 if operation.get('winner', None):
-                    chess_game.forced_game_ending(operation['winner'])
+                    self._chess_game.forced_game_ending(operation['winner'])
                     break
                 elif operation.get('disconnected', None):
-                    chess_game.forced_game_ending(self._nickname)
+                    self._chess_game.forced_game_ending(self._nickname)
                     break
                 else:
                     move = operation['move']
                 logging.info(f'Opponent moved: {move}')
-                moves_length = len(chess_game.all_move_list)
-                chess_game.another_player_move = move
-                self.wait_until_move_performed(moves_length, chess_game.all_move_list)
+                moves_length = len(self._chess_game.all_move_list)
+                self._chess_game.another_player_move = move
+                self.wait_until_move_performed(moves_length, self._chess_game.all_move_list)
                 last_move = move
                 my_turn = not my_turn
-            elif chess_game.all_move_list and chess_game.all_move_list[-1] != last_move:
+            elif self._chess_game.all_move_list and self._chess_game.all_move_list[-1] != last_move:
                 logging.info('Self move detected. Sending to server...')
-                logging.info(f'ALL MOVE LIST: {chess_game.all_move_list}')
+                logging.info(f'ALL MOVE LIST: {self._chess_game.all_move_list}')
                 logging.info(f'LAST MOVE: {last_move}')
-                last_move = chess_game.all_move_list[-1]
+                last_move = self._chess_game.all_move_list[-1]
                 data = {'move': last_move}
                 self._socket.sendall(send_data(data))
                 logging.info(f'Self move sent to: {self._server_socket}')
                 my_turn = not my_turn
-            game_lasts = chess_game.game_state == GameState.InProgress
-        self._socket.sendall(send_data({'winner': chess_game.winner}))
-        logging.info(f'Game ended!\nPlayer: {chess_game.winner} won!')
+            game_lasts = self._chess_game.game_state == GameState.InProgress
+        self._socket.sendall(send_data({'winner': self._chess_game.winner}))
+        logging.info(f'Game ended!\nPlayer: {self._chess_game.winner} won!')
 
     def wait_until_move_performed(self, length, list):
         while length == len(list):
-            pass
+            sleep(0.001) # used because did not want to implement synchronous programming
+            # in game.py - I wanted it to stay 'single-threaded', so didn't use semaphore
 
     def start_game(self):
         logging.info(f'START GAME METHOD; THREAD: {threading.current_thread().name}')
@@ -80,17 +85,17 @@ class GameClient:
         args = receive_data(self._socket.recv(1024))
         logging.info(f'Received game args from server: {args}')
 
-        chess_game = Game(*tuple(args.values()))
+        self._chess_game = Game(*tuple(args.values()))
 
         logging.info('Starting the game...')
         my_turn = args['player_color'] == Color.White
-        client_thread = threading.Thread(target=self.start_client, args=(chess_game, my_turn,))
+        client_thread = threading.Thread(target=self.start_client, args=(my_turn,))
         client_thread.daemon = True
 
         client_thread.start()
-        chess_game.start()
+        self._chess_game.start()
 
-        while not chess_game.winner:
+        while not self._chess_game.winner:
             sleep(1)
 
 
