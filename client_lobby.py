@@ -1,3 +1,5 @@
+import traceback
+
 import socket
 import sys
 import logging
@@ -7,13 +9,16 @@ from PyQt5.QtWidgets import *
 from PyQt5 import uic
 from PyQt5.QtCore import QCoreApplication, QMetaObject, Qt, Q_ARG, pyqtSlot
 import os
+import datetime as dt
 
 from server_lobby import *
 from game_client import *
 from networking import *
+from move_analyzer import *
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(threadName)s - %(levelname)s - %(message)s')
+ARCHIVE_PATH = '.\\archive'
 
 
 class LobbyWindow(QMainWindow):
@@ -23,6 +28,7 @@ class LobbyWindow(QMainWindow):
         uic.loadUi("lobby.ui", self)
         self.setWindowTitle('Chess Multiplayer Lobby')
         self.show()
+        self.setFixedSize(self.size())
 
         self.join_button.clicked.connect(self.join_button_clicked)
         self.create_button.clicked.connect(self.create_game)
@@ -32,6 +38,8 @@ class LobbyWindow(QMainWindow):
         self.game_name.textChanged.connect(self.game_name_or_nickname_changed)
         self.nickname.textChanged.connect(self.check_game_list_and_nickname)
         self.nickname.textChanged.connect(self.game_name_or_nickname_changed)
+        self.browse_button.clicked.connect(self.choose_file)
+        self.accept_button.clicked.connect(self.game_analysis)
 
         socket_ = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         logging.info('Connecting to a lobby server...')
@@ -47,6 +55,14 @@ class LobbyWindow(QMainWindow):
         self._listen_server_thread = threading.Thread(target=self.listen_server_operations)
         self._listen_server_thread.daemon = True
         self._listen_server_thread.start()
+
+    def choose_file(self):
+        filename = QFileDialog().getOpenFileName(self, 'Open file')[0]
+        self.filepath.setText(filename)
+
+    def game_analysis(self):
+        moves = read_data_from_file(self.filepath.text())
+        threading.Thread(target=MoveAnalyzer(moves).start_analysis())
 
     def join_button_clicked(self):
         game_info: GameInfo = self.game_list.currentItem().game_info
@@ -71,7 +87,19 @@ class LobbyWindow(QMainWindow):
         self._my_game_client = GameClient(game_info.server_socket, self.nickname.text())
         self._my_game_client.start_game()
         logging.info('Game has ended')
+
+        logging.info('Saving game to archive...')
+        filename = game_info.display_info.replace(';', '_').replace(' ', '')
+        filename += self.get_current_timestamp()
+        write_data_to_file(self._my_game_client.chess_game.all_move_list, os.path.join(ARCHIVE_PATH, filename))
+        logging.info('Moves from game saved')
+
         self.close()
+
+    def get_current_timestamp(self):
+        now = dt.datetime.now()
+        timestamp = now.strftime('%Y-%m-%d_%H;%M;%S')
+        return timestamp
 
     def create_game(self):
         logging.info('Creating new game...')
@@ -84,7 +112,7 @@ class LobbyWindow(QMainWindow):
         logging.info('Sending info about new game to server...')
         self._server_socket.connection.sendall(send_data(LobbyOperation(OperationType.StartGame, args)))
         logging.info('Info about new game sent')
-        display_info = f'{game_name};{color.name}; {game_time}'
+        display_info = f'{game_name}; {opposite_color(color).name}; {game_time}'
         self._my_game_info = GameInfo(game_name, (SERVER_IP, game_server_port), 1, display_info)
 
     def check_game_list_and_nickname(self):
