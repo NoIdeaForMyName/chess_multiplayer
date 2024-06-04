@@ -126,8 +126,8 @@ class Game:
                     piece_img = self.piece_images[str(piece)]
                     self.screen.blit(piece_img, (self.CELL_SIZE * col, self.CELL_SIZE * row + self.TIMER_HEIGHT))
 
-    def get_cell_under_mouse(self):
-        mouse_x, mouse_y = pygame.mouse.get_pos()
+    def get_cell_under_mouse(self, mouse_x, mouse_y):
+        # mouse_x, mouse_y = pygame.mouse.get_pos()
         mouse_y -= self.TIMER_HEIGHT
         row = mouse_y // self.CELL_SIZE
         col = mouse_x // self.CELL_SIZE
@@ -147,6 +147,8 @@ class Game:
 
         while game_lasts and not self._forced_ending_winner:
             for event in pygame.event.get():
+                if event == pygame.MOUSEBUTTONUP or pygame.MOUSEBUTTONDOWN:
+                    pass
                 if event.type == pygame.QUIT:
                     self._winner = self.players[Color.White if self._player_color != Color.White else Color.Black]
                     self._game_state = GameState.Ended
@@ -154,7 +156,7 @@ class Game:
                     sys.exit()
                 elif event.type == pygame.MOUSEBUTTONDOWN and self._player_color == self._chess_game.turn:
                     if event.button == 1:  # Left mouse button
-                        row, col = self.get_cell_under_mouse()
+                        row, col = self.get_cell_under_mouse(*event.pos)
                         if not isinstance(board[row][col], EmptyPiece) and board[row][col].color == self._chess_game.turn:
                             dragging_piece = board[row][col]
                             dragging_piece_pos = (row, col)
@@ -164,7 +166,7 @@ class Game:
                 self._player_color != self._chess_game.turn and self.another_player_move is not None):
                     if self._player_color == self._chess_game.turn:
                         old_row, old_col = dragging_piece_pos
-                        row, col = self.get_cell_under_mouse()
+                        row, col = self.get_cell_under_mouse(*event.pos)
                     else:
                         old_row, old_col = self.another_player_move[0]
                         row, col = self.another_player_move[1]
